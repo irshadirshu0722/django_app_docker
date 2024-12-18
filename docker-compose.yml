@@ -3,11 +3,8 @@ version: "3.8"
 services:
   # Django application
   web:
-    image: irshad1213/django_app
     build: .
     command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn django_app.wsgi:application --bind 0.0.0.0:8000"
-    volumes:
-      - .:/app
     ports:
       - "8000:8000"
     depends_on:
@@ -15,6 +12,9 @@ services:
       - redis
     env_file:
       - .env
+    volumes:
+      - static_vol:/app/sub_app/static
+      - media_vol:/app/sub_app/media
 
   # PostgreSQL database
   db:
@@ -34,7 +34,7 @@ services:
 
   # Celery Worker
   celery:
-    image: irshad1213/django_app
+    build: .
     command: celery -A django_app worker --loglevel=info -P gevent
     depends_on:
       - db
@@ -43,8 +43,17 @@ services:
       - .env
     volumes:
       - .:/app
+  nginx:
+    build: ./nginx
+    volumes:
+      - static_vol:/app/static
+      - media_vol:/app/media
+    ports:
+      -  "80:80"
+    depends_on:
+      - web
 volumes:
   postgres_data:
   redis_data:
-  static_volume:
-  media_volume:
+  static_vol:
+  media_vol:
