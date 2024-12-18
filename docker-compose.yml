@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  # Django application
+  web:
+    image: irshad1213/django_app
+    build: .
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn django_app.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+
+  # PostgreSQL database
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: django_app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: irshad1213
+
+  # Redis for Celery
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+
+  # Celery Worker
+  celery:
+    image: irshad1213/django_app
+    command: celery -A django_app worker --loglevel=info -P gevent
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
